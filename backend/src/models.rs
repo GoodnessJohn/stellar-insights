@@ -170,8 +170,51 @@ pub struct PaymentRecord {
     pub asset_type: String,
     pub asset_code: Option<String>,
     pub asset_issuer: Option<String>,
+    #[sqlx(default)]
+    pub source_asset_code: String,
+    #[sqlx(default)]
+    pub source_asset_issuer: String,
+    #[sqlx(default)]
+    pub destination_asset_code: String,
+    #[sqlx(default)]
+    pub destination_asset_issuer: String,
     pub amount: f64,
+    #[sqlx(default)]
+    pub successful: bool,
+    #[sqlx(default)]
+    pub timestamp: Option<DateTime<Utc>>,
+    #[sqlx(default)]
+    pub submission_time: Option<DateTime<Utc>>,
+    #[sqlx(default)]
+    pub confirmation_time: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
+}
+
+impl PaymentRecord {
+    pub fn get_corridor(&self) -> crate::models::corridor::Corridor {
+        let src_code = if self.source_asset_code.is_empty() {
+            self.asset_code.clone().unwrap_or_default()
+        } else {
+            self.source_asset_code.clone()
+        };
+        let src_issuer = if self.source_asset_issuer.is_empty() {
+            self.asset_issuer.clone().unwrap_or_default()
+        } else {
+            self.source_asset_issuer.clone()
+        };
+        let dst_code = if self.destination_asset_code.is_empty() {
+            self.asset_code.clone().unwrap_or_default()
+        } else {
+            self.destination_asset_code.clone()
+        };
+        let dst_issuer = if self.destination_asset_issuer.is_empty() {
+            self.asset_issuer.clone().unwrap_or_default()
+        } else {
+            self.destination_asset_issuer.clone()
+        };
+
+        crate::models::corridor::Corridor::new(src_code, src_issuer, dst_code, dst_issuer)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -245,6 +288,8 @@ pub struct LiquidityPoolSnapshot {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LiquidityPoolStats {
     pub total_pools: i64,
+    pub total_liquidity_usd: f64,
+    pub avg_pool_size_usd: f64,
     pub total_value_locked_usd: f64,
     pub total_volume_24h_usd: f64,
     pub total_fees_24h_usd: f64,
